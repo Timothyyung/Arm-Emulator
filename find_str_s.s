@@ -3,7 +3,8 @@
 
 find_str_s:
     mov r2, #0
-    mov r3, #100
+    mov r3, #0
+    sub r3, r3, #1
     sub sp,sp,#16
     str r4,[sp]
     str r5,[sp, #4]
@@ -29,7 +30,8 @@ loops:
     add r7, r7, #1
     b loops
 break:
-    mov r3, #100
+    mov r3, #0
+    sub r3, r3, #1
     add r2, r2, #1	// i += 1
     b loop
 end:

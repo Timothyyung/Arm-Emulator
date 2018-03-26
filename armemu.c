@@ -36,6 +36,13 @@ struct mem_instruction{
     unsigned int b;
 };
 
+struct analysis{
+    unsigned int ci;
+    unsigned int mi;
+    unsigned int bi;
+    unsigned int nb;
+};
+
 void arm_state_init(struct arm_state *as, unsigned int *func,
                     unsigned int arg0, unsigned int arg1,
                     unsigned int arg2, unsigned int arg3)
@@ -62,14 +69,32 @@ void arm_state_init(struct arm_state *as, unsigned int *func,
     as->regs[3] = arg3;
 }
 
+void analysis_init(struct analysis *ana)
+{
+    ana->ci = 0;
+    ana->mi = 0;
+    ana->bi = 0;
+    ana->nb = 0;
+}
+
 void arm_state_print(struct arm_state *as)
 {
     int i;
 
     for (i = 0; i < NREGS; i++) {
-        printf("reg[%d] = %x\n", i, as->regs[i]);
+        printf("reg[%d] = %d\n", i, as->regs[i]);
     }
     printf("cpsr = %X\n", as->cpsr);
+}
+
+void analysis_print(struct analysis *ana)
+{
+    printf("_________A_N_A_L_Y_S_I_S_________\n");
+    printf("Computation instructions:     %d\n",ana->ci);
+    printf("Memory instructions:          %d\n",ana->mi);
+    printf("Branch instructions taken:    %d\n",ana->bi);
+    printf("Branch instructions not taken:%d\n",ana->nb);
+    printf("_________________________________\n\n");
 }
 
 unsigned int maskgen(unsigned int size)
@@ -277,10 +302,8 @@ void armemu_ldr(struct arm_state * state)
 	state->regs[mi.rd] = *((unsigned int *) (state->regs[mi.rn] + index));
     else
     {
-	printf("char char \n\n");
 	state->regs[mi.rd] = *((char *) (state->regs[mi.rn] + index));
     }
-    printf("%d value to store\n",state->regs[mi.rd]);
     state->regs[PC] = state->regs[PC] + 4;    
 }
 
@@ -336,7 +359,7 @@ bool is_ble_inst(unsigned int iw)
     return ((iw >>26 & 0b11) == 0b10) && ((iw>>28 & 0xf) == 0b1101);
 }
 
-void armemu_beqne(struct arm_state *state,int bitno, int cbit)
+int armemu_beqne(struct arm_state *state,int bitno, int cbit)
 {
     unsigned int im24;
     unsigned int iw = *((unsigned int *) state->regs[PC]);
@@ -346,8 +369,12 @@ void armemu_beqne(struct arm_state *state,int bitno, int cbit)
     {
 	state->regs[PC] = state->regs[PC] + 8;
 	state->regs[PC] = state->regs[PC] + (im24 << 2);
+	return 1;
     }else
+    {
 	state->regs[PC] = state->regs[PC] + 4;
+	return 0;
+    }
 }
 
 bool is_bx_inst(unsigned int iw)
@@ -370,71 +397,226 @@ void armemu_bx(struct arm_state *state)
     state->regs[PC] = state->regs[rn];
 }
 
-void armemu_one(struct arm_state *state)
+void armemu_one(struct arm_state *state, struct analysis *ana)
 {
-    unsigned int iw;  
+    unsigned int iw;
+    int b = -1;
     iw = *((unsigned int *) state->regs[PC]);
     if (is_bx_inst(iw)) {
-	printf("bx instruction");
         armemu_bx(state);
     } else if (is_add_inst(iw)) {
-	printf("add instruction\n");
         armemu_add(state);
+	ana->ci = ana->ci + 1; 
     } else if (is_mov_inst(iw)) {
-	printf("mov instruction\n");
 	armemu_mov(state);
+	ana->ci = ana->ci + 1;
     } else if (is_sub_inst(iw)) {
-	printf("sub instruction\n");
 	armemu_sub(state);
+	ana->ci = ana->ci + 1;
     } else if (is_cmp_inst(iw)) {
-	printf("cmp instruction\n");
 	armemu_cmp(state);
+	ana->ci = ana->ci + 1;
     } else if (is_b_inst(iw)) {
-	printf("b instuction\n");
 	armemu_b(state);
+	ana->bi = ana->bi + 1;
     } else if (is_beq_inst(iw)) {
-	printf("beq isntuction\n");
-	armemu_beqne(state,30,1);
+	b = armemu_beqne(state,30,1);
     } else if (is_bne_inst(iw)) {
-	printf("bne instruction\n");
-	armemu_beqne(state,30,0);
+	b = armemu_beqne(state,30,0);
     } else if (is_bge_inst(iw)) {
-	printf("bge instruction \n");
-	armemu_beqne(state,31,0);
+	b = armemu_beqne(state,31,0);
     } else if (is_ble_inst(iw)){
-	printf("ble instruction \n");
-	armemu_beqne(state,31,1);
+	b = armemu_beqne(state,31,1);
     } else if (is_ldr_inst(iw)) {
-	printf("ldr instruction\n");
 	armemu_ldr(state);
+	ana->mi = ana->mi + 1;
     } else if (is_str_inst(iw)){
-	printf("str instruction\n");
 	armemu_str(state);
+	ana->mi = ana->mi + 1;
     } else {
 	printf("BAD INSTRUCTION %x\n\n\n", iw);
 	arm_state_print(state);
 	state->regs[PC] = 0;
     }
+    if(b == 1)
+    {
+	ana->bi = ana->bi + 1;
+    }else if( b == 0)
+    {
+	ana->nb = ana->nb + 1;
+    }
+
 }
 	
-unsigned int armemu(struct arm_state *state)
+unsigned int armemu(struct arm_state *state,struct analysis *ana)
 {
+    analysis_init(ana);
     while (state->regs[PC] != 0){
-        armemu_one(state);
+        armemu_one(state,ana);
     }
     return state->regs[0];
 }
-                      
+
+void string_stest(char *s, char *sub)
+{
+    unsigned int r;
+    struct arm_state state;
+    struct analysis ana;
+    arm_state_init(&state,(unsigned int *) find_str_s,(unsigned int) s, (unsigned int) sub, 0 ,0);
+    r= find_str_s(s,sub);
+    printf("assembly str in pos : %d\n\n", r);
+    
+    r=  (armemu(&state, &ana));
+    printf("emulated assembly str in pos : %d \n", r);   
+    analysis_print(&ana);
+}
+
+
+void string_tester()
+{
+    printf("Testing Strings\n\n");
+    
+    printf("String = aaabbbccc \nSubString = bbb\n");
+    char *a = "aaabbbccc";
+    char *b = "bbb";
+    string_stest(a,b);
+
+    printf("String = abcabccd\nSubString = ccd\n");
+    a = "abcabccd";
+    b = "ccd";
+    string_stest(a,b);
+
+    printf("String = aaaaa\nSubString = bbb\n");
+    a = "aaaaa";
+    b= "bbb";
+    string_stest(a,b);
+}
+
+void fib_rec_test()
+{
+    unsigned int r1;
+    unsigned int r2;
+    struct arm_state state;
+    struct analysis ana;
+    printf("emulated assembly :  assembly\n");
+    for(int i = 1; i <= 20; i++)
+    {
+	arm_state_init(&state,(unsigned int *) fib_rec_s,i, 0, 0 ,0);
+	r1 = armemu(&state, &ana);
+	r2 = fib_rec_s(i);
+	printf( "%d_______%d\n",r1,r2);
+    }
+    analysis_print(&ana);
+}
+
+void fib_itr_test()
+{
+    unsigned int r1;
+    unsigned int r2;
+    struct arm_state state;
+    struct analysis ana;
+    printf("emulated assembly : assembly\n");
+    for(int i = 1; i <= 20; i++)
+    {
+	arm_state_init(&state,(unsigned int *) fib_itr_s,i, 0, 0 ,0);
+	r1 = armemu(&state, &ana);
+	r2 = fib_itr_s(i);
+	printf( "%d________%d\n",r1,r2);
+    }
+    analysis_print(&ana);
+}
+
+int * initarray(){
+    static int temp[1000];
+    for (int i = 0; i< 1000; i++){
+	temp[i] = i;
+    }
+    return temp;
+}
+
+void arraymax (int *a, int size)
+{
+    unsigned int r;
+    struct arm_state state;
+    struct analysis ana;
+    r = find_max_s(a,size);
+    printf("find max assembly : %d\n",r);
+   
+    arm_state_init(&state,(unsigned int *) find_max_s,(unsigned int) a, size, 0 ,0);
+    r=  (armemu(&state, &ana));
+    printf("find max emulated assembly : %d\n", r);
+    analysis_print(&ana);
+}
+
+void arraymaxtest()
+{
+    int a[5] = {100,200,300,400,500};
+    int r;
+    printf("____________________________________________\n");
+    printf("did we MAXimum the amount of test cases (no)\n");
+    printf("____________________________________________\n");
+    printf("input array = {100,200,300,400,500} \n\n");
+    arraymax(a,5);
+  
+    int * a2 = initarray();
+    printf("input array = {0...999} \n\n");
+    arraymax(a2,1000); 
+    
+    int a3[7] = {0,0,0,0,0,0,0};
+    printf("input array = {0,0,0,0,0,0,0} \n\n");
+    arraymax(a3,7);
+
+    int a4[6]= {-1,-10,-100,-1000,-10000,-100000};
+    printf("input array = {-1,-10,-100,-1000,-10000,-1000000}\n\n");
+    arraymax(a4,6);	 
+}
+
+void arraysum(int *a, int size)
+{
+    unsigned int r;
+    struct arm_state state;
+    struct analysis ana;
+    arm_state_init(&state,(unsigned int *) sum_array_s,(unsigned int) a, size, 0 ,0);
+
+    r = sum_array_s(a,size);
+    printf("find sum assembly : %d\n",r);
+
+    r=  (armemu(&state,&ana));
+    printf("find sum emulated assembly : %d\n", r);
+
+    analysis_print(&ana);
+
+}
+
+void arraysumtest()
+{
+    int a[5] = {100,200,300,400,500};
+    int r;
+    printf("____________________________________________\n");
+    printf("              Sum array test\n");
+    printf("____________________________________________\n");
+    printf("input array = {100,200,300,400,500} \n\n");
+    arraysum(a,5);
+  
+    int * a2 = initarray();
+    printf("input array = {0...999} \n\n");
+    arraysum(a2,1000); 
+    
+    int a3[7] = {0,0,0,0,0,0,0};
+    printf("input array = {0,0,0,0,0,0,0} \n\n");
+    arraysum(a3,7);
+
+    int a4[6]= {-1,-10,-100,-1000,-10000,-100000};
+    printf("input array = {-1,-10,-100,-1000,-10000,-1000000}\n\n");
+    arraysum(a4,6);	 
+}
+
 int main(int argc, char **argv)
 {
-    struct arm_state state;
-    unsigned int r;
-    char *b = "grrrab";
-    char *c = "rrab";
-    int a[5] = {1,2,10,4,5};
-    arm_state_init(&state, (unsigned int *) find_str_s, (unsigned int ) b,(unsigned int ) c,3,4);
-    arm_state_print(&state);
-    r = armemu(&state);
-    printf("r = %d\n", r); 
+    arraysumtest();
+    arraymaxtest();
+    string_tester();
+    fib_rec_test();
+    fib_itr_test();
     return 0;
 }

@@ -1,15 +1,12 @@
 #include <stdio.h>
 
+
 int sum_array_s(int a[],int n);
 int find_max_s(int a[],int n);
 int fib_itr_s(int n);
 int fib_rec_s(int n);
 int find_str_s(char *s,char *sub);
-void arm_state_init(struct arm_state *as, unsigned int *func, 
-		unsigned int arg0, unsigned int arg1,
-		unsigned int arg2, unsigned int arg3);
-void arm_state_print(struct arm_state *as);
-unsigned int armemu(struct arm_state *state);
+
 
 
 int * initarray(){
@@ -26,6 +23,9 @@ void stringtester(char *s, char *sub){
     r = find_str_s(s,sub);
     printf("(assembly) str in position : %d\n",r);
     arm_state_init(&state, (unsigned int *) find_str_s, (unsigned int) s, (unsigned int) sub, 0,0);
+    r = armemu(&state);
+    printf("(emulated) str in postion : %d\n",r);
+    arm_state_print(&state);
 }
 
 void stest(){
