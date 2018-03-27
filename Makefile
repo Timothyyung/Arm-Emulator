@@ -1,6 +1,6 @@
 PROGS = armemu
 
-OBJS_ARMEMU = add_s.o fib_itr_s.o fib_rec_s.o  sum_array_s.o find_max_s.o find_str_s.o
+OBJS_ARMEMU =fib_itr_s.o fib_rec_s.o  sum_array_s.o find_max_s.o find_str_s.o
  
 
 CFLAGS = -g
