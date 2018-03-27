@@ -504,7 +504,7 @@ void fib_rec_test()
 	arm_state_init(&state,(unsigned int *) fib_rec_s,i, 0, 0 ,0);
 	r1 = armemu(&state, &ana);
 	r2 = fib_rec_s(i);
-	printf( "-_%d_______%d-_-\n",r1,r2);
+	printf( "%d_______%d\n",r1,r2);
     }
     analysis_print(&ana);
 }
@@ -521,7 +521,7 @@ void fib_itr_test()
 	arm_state_init(&state,(unsigned int *) fib_itr_s,i, 0, 0 ,0);
 	r1 = armemu(&state, &ana);
 	r2 = fib_itr_s(i);
-	printf( "-_-%d________%d-_-\n",r1,r2);
+	printf( "%d________%d\n",r1,r2);
     }
     analysis_print(&ana);
 }
