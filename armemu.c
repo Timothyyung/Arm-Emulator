@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <stdio.h>
+#include <time.h>
 
 #define NREGS 16
 #define STACK_SIZE 1024
@@ -7,7 +8,6 @@
 #define LR 14
 #define PC 15
 
-int add_s(int a, int b);
 int fib_itr_s(int a);
 int fib_rec_s(int a);
 int sum_array_s(int a[], int n);
@@ -504,7 +504,7 @@ void fib_rec_test()
 	arm_state_init(&state,(unsigned int *) fib_rec_s,i, 0, 0 ,0);
 	r1 = armemu(&state, &ana);
 	r2 = fib_rec_s(i);
-	printf( "%d_______%d\n",r1,r2);
+	printf( "-_%d_______%d-_-\n",r1,r2);
     }
     analysis_print(&ana);
 }
@@ -521,7 +521,7 @@ void fib_itr_test()
 	arm_state_init(&state,(unsigned int *) fib_itr_s,i, 0, 0 ,0);
 	r1 = armemu(&state, &ana);
 	r2 = fib_itr_s(i);
-	printf( "%d________%d\n",r1,r2);
+	printf( "-_-%d________%d-_-\n",r1,r2);
     }
     analysis_print(&ana);
 }
@@ -611,12 +611,155 @@ void arraysumtest()
     arraysum(a4,6);	 
 }
 
-int main(int argc, char **argv)
+void function_test()
 {
     arraysumtest();
     arraymaxtest();
     string_tester();
     fib_rec_test();
     fib_itr_test();
+}
+
+void sum_array_time_test()
+{
+    int a[5] = {100,200,300,400,500};
+    struct arm_state state;
+    struct analysis ana;
+
+    unsigned int time = clock();
+    for(int i = 0; i < 50; i++)
+    {
+	arm_state_init(&state,(unsigned int *) sum_array_s,(unsigned int) a, 5, 0 ,0);
+	(armemu(&state,&ana));
+    }
+    time = clock() - time;
+
+    unsigned int time2 = clock();
+    for(int i = 0; i < 50; i++)
+    {
+	sum_array_s(a,5);	
+    }
+    time2 = clock() - time2;
+
+    double ratio = (double) (time / time2);
+    printf("sum array timing test\n");
+    printf("Time for emu: %d\nTime for native: %d\n ",time, time2);
+    printf("Ratio = %f\n\n",ratio);
+}
+
+void max_array_time_test()
+{
+    int a[5] = {100,200,300,400,500};
+    struct arm_state state;
+    struct analysis ana;
+
+    unsigned int time = clock();
+    for(int i = 0; i < 50; i++)
+    {
+	arm_state_init(&state,(unsigned int *) find_max_s,(unsigned int) a, 5, 0 ,0);
+	(armemu(&state,&ana));
+    }
+    time = clock() - time;
+
+    unsigned int time2 = clock();
+    for(int i = 0; i < 50; i++)
+    {
+	find_max_s(a,5);	
+    }
+    time2 = clock() - time2;
+    double ratio = (double) (time / time2);
+    printf("max array time test \n");
+    printf("Time for emu: %d\nTime for native: %d\n ",time, time2);
+    printf("Ratio = %f\n\n",ratio);
+}
+
+void fib_itr_time_test()
+{
+    struct arm_state state;
+    struct analysis ana;
+    unsigned int time = clock();
+    for(int i = 0; i < 50; i++)
+    {
+	arm_state_init(&state,(unsigned int *) fib_itr_s,10, 0, 0 ,0);
+	(armemu(&state,&ana));
+    }
+    time = clock() - time;
+
+    unsigned int time2 = clock();
+    for(int i = 0; i < 50; i++)
+    {
+	fib_itr_s(10);	
+    }
+    time2 = clock() - time2;
+    double ratio = (double) (time / time2);
+    printf("fib itr timing test \n");
+    printf("Time for emu: %d\nTime for native: %d\n ",time, time2);
+    printf("Ratio = %f\n\n",ratio);
+}
+
+void fib_rec_time_test()
+{
+    struct arm_state state;
+    struct analysis ana;
+    unsigned int time = clock();
+    for(int i = 0; i < 50; i++)
+    {
+	arm_state_init(&state,(unsigned int *) fib_rec_s,10, 0, 0 ,0);
+	(armemu(&state,&ana));
+    }
+    time = clock() - time;
+
+    unsigned int time2 = clock();
+    for(int i = 0; i < 50; i++)
+    {
+	fib_rec_s(10);	
+    }
+    time2 = clock() - time2;
+    double ratio = (double) (time / time2);
+    printf("fib rec timing test\n");
+    printf("Time for emu: %d\nTime for native: %d\n ",time, time2);
+    printf("Ratio = %f\n\n",ratio);
+}
+
+void find_str_time_test()
+{
+    char *a = "aaabbbccc";
+    char *b = "bbb";
+    struct arm_state state;
+    struct analysis ana;
+    unsigned int time = clock();
+    for(int i = 0; i < 50; i++)
+    {
+	arm_state_init(&state,(unsigned int *) find_str_s,a, b, 0 ,0);
+	(armemu(&state,&ana));
+    }
+    time = clock() - time;
+
+    unsigned int time2 = clock();
+    for(int i = 0; i < 50; i++)
+    {
+	find_str_s(a,b);	
+    }
+    time2 = clock() - time2;
+    double ratio = (double) (time / time2);
+    printf("find str timing test\n");
+    printf("Time for emu: %d\nTime for native: %d\n ",time, time2);
+    printf("Ratio = %f\n\n",ratio);
+}
+
+void time_test()
+{
+    printf("-_-_-_Timing tests_-_-_-\n\n");
+    sum_array_time_test();
+    max_array_time_test();
+    fib_itr_time_test();
+    fib_rec_time_test();
+    find_str_time_test();
+}
+
+int main(int argc, char **argv)
+{
+    function_test();
+    time_test();
     return 0;
 }
