@@ -1,5 +1,6 @@
 
 fib_itr_s:
+    mov r0,#10
     mov r1,#1
     mov r2,#0
     mov r3,#1
@@ -14,6 +15,9 @@ loop:
     b loop
 loop_end:
     mov r0,r3
-    bx lr
+
+    b halt
+halt:
+    b halt
 
     
