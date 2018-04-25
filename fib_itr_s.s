@@ -1,5 +1,3 @@
-.global fib_itr_s
-.func fib_itr_s
 
 fib_itr_s:
     mov r1,#1
